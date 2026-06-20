@@ -7,6 +7,7 @@ import com.agrotrack.suscription.service.domain.model.events.SubscriptionExpired
 import com.agrotrack.suscription.service.domain.model.valueobjects.SubscriptionId;
 import com.agrotrack.suscription.service.domain.model.valueobjects.SubscriptionPlan;
 import com.agrotrack.suscription.service.domain.model.valueobjects.SubscriptionStatus;
+import com.agrotrack.suscription.service.domain.model.valueobjects.UserId;
 import com.agrotrack.suscription.service.shared.domain.model.aggregates.AuditableAbstractAggregateRoot;
 import com.agrotrack.suscription.service.shared.domain.model.valueobjects.Money;
 import jakarta.persistence.*;
@@ -14,21 +15,17 @@ import lombok.Getter;
 
 import java.math.BigDecimal;
 import java.util.Currency;
-import java.util.Date;
+import java.time.LocalDate;
 
 @Getter
 @Entity
 public class Subscription extends AuditableAbstractAggregateRoot<Subscription> {
-    @Embedded
-    @AttributeOverride(name = "value", column = @Column(name = "subscription_id", unique = true))
-    private SubscriptionId subscriptionId;
-
     @Enumerated(EnumType.STRING)
     @Column(name = "subscription_plan")
     private SubscriptionPlan subscriptionPlan;
 
-    private Date startDate;
-    private Date endDate;
+    private LocalDate startDate;
+    private LocalDate endDate;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "subscription_status")
@@ -42,6 +39,10 @@ public class Subscription extends AuditableAbstractAggregateRoot<Subscription> {
     private Money price;
 
     private Integer maxPlots;
+
+    @Embedded
+    @AttributeOverride(name = "value", column = @Column(name = "owner_user_id", nullable = false))
+    private UserId ownerUserId;
 
     protected Subscription() {
     }
@@ -77,11 +78,12 @@ public class Subscription extends AuditableAbstractAggregateRoot<Subscription> {
         this.subscriptionStatus = SubscriptionStatus.PENDING;
         this.price = calculatePrice(command.subscriptionPlan());
         this.maxPlots = calculateMaxPlots(command.subscriptionPlan());
+        this.ownerUserId = new UserId(command.ownerUserId());
     }
 
-    @PostPersist
-    protected void onPostPersist() {
-        this.subscriptionId = new SubscriptionId(this.getId());
+    @Transient
+    public SubscriptionId getSubscriptionId() {
+        return this.getId() == null ? null : new SubscriptionId(this.getId());
     }
 
     public void activate() {
@@ -89,7 +91,7 @@ public class Subscription extends AuditableAbstractAggregateRoot<Subscription> {
             throw new IllegalStateException("Only pending subscriptions can be activated.");
         }
         this.subscriptionStatus = SubscriptionStatus.ACTIVE;
-        this.registerEvent(new SubscriptionActivatedEvent(this.subscriptionId.value()));
+        this.registerEvent(new SubscriptionActivatedEvent(this.getSubscriptionId().value()));
     }
 
     public void expire() {
@@ -97,7 +99,7 @@ public class Subscription extends AuditableAbstractAggregateRoot<Subscription> {
             throw new IllegalStateException("Only active subscriptions can be expired.");
         }
         this.subscriptionStatus = SubscriptionStatus.EXPIRED;
-        this.registerEvent(new SubscriptionExpiredEvent(this.subscriptionId.value()));
+        this.registerEvent(new SubscriptionExpiredEvent(this.getSubscriptionId().value()));
     }
 
     public void cancel() {
@@ -105,7 +107,7 @@ public class Subscription extends AuditableAbstractAggregateRoot<Subscription> {
             throw new IllegalStateException("Only active subscriptions can be cancelled.");
         }
         this.subscriptionStatus = SubscriptionStatus.CANCELLED;
-        this.registerEvent(new SubscriptionCancelledEvent(this.subscriptionId.value()));
+        this.registerEvent(new SubscriptionCancelledEvent(this.getSubscriptionId().value()));
     }
 
 }

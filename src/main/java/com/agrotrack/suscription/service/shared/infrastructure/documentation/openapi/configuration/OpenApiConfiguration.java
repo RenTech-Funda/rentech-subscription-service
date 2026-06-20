@@ -47,7 +47,10 @@ public class OpenApiConfiguration {
 
         openApi.addSecurityItem(new SecurityRequirement()
                         .addList(securitySchemeName))
-                .servers(List.of(new Server().url("https://agrotrack-web-service.up.railway.app")))
+                .servers(List.of(
+                        new Server().url("https://agrotrack-api-gateway.azurewebsites.net").description("Azure API Gateway"),
+                        new Server().url("http://localhost:8080").description("Local API Gateway")
+                ))
                 .components(new Components()
                         .addSecuritySchemes(securitySchemeName,
                                 new SecurityScheme()

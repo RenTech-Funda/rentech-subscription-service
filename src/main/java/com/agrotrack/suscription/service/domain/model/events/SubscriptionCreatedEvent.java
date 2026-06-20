@@ -4,6 +4,6 @@ public record SubscriptionCreatedEvent(
         Long subscriptionId,
         String organizationName,
         Integer maxPlots,
-        Long ownerProfileId
+        Long ownerUserId
 ) {
 }
