@@ -10,8 +10,8 @@ import com.agrotrack.suscription.service.domain.services.SubscriptionQueryServic
 import com.agrotrack.suscription.service.interfaces.rest.resources.CreateSubscriptionResource;
 import com.agrotrack.suscription.service.interfaces.rest.resources.SubscriptionResource;
 import com.agrotrack.suscription.service.interfaces.rest.transform.SubscriptionResourceFromEntityAssembler;
+import com.agrotrack.suscription.service.shared.infrastructure.security.AuthenticatedUserProvider;
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
@@ -22,7 +22,6 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
@@ -36,23 +35,24 @@ import java.util.List;
 @Tag(name = "Subscriptions", description = "Subscription management endpoints")
 public class SubscriptionController {
 
-    private static final String USER_ID_HEADER = "X-User-Id";
-
     private final SubscriptionCommandService subscriptionCommandService;
     private final SubscriptionQueryService subscriptionQueryService;
+    private final AuthenticatedUserProvider authenticatedUserProvider;
 
     public SubscriptionController(SubscriptionCommandService subscriptionCommandService,
-                                  SubscriptionQueryService subscriptionQueryService) {
+                                  SubscriptionQueryService subscriptionQueryService,
+                                  AuthenticatedUserProvider authenticatedUserProvider) {
         this.subscriptionCommandService = subscriptionCommandService;
         this.subscriptionQueryService = subscriptionQueryService;
+        this.authenticatedUserProvider = authenticatedUserProvider;
     }
 
     @PostMapping(consumes = "application/json")
     @Operation(summary = "Create a pending subscription")
     public ResponseEntity<SubscriptionResource> createSubscription(
-            @Parameter(hidden = true) @RequestHeader(USER_ID_HEADER) @Positive Long userId,
             @Valid @RequestBody CreateSubscriptionResource resource) {
 
+        var userId = authenticatedUserProvider.getUserId();
         var startDate = LocalDate.now();
         var command = new CreateSubscriptionCommand(
                 resource.subscriptionPlan(),
@@ -78,8 +78,8 @@ public class SubscriptionController {
 
     @GetMapping("/mine")
     @Operation(summary = "Get subscriptions owned by the authenticated user")
-    public ResponseEntity<List<SubscriptionResource>> getMySubscriptions(
-            @Parameter(hidden = true) @RequestHeader(USER_ID_HEADER) @Positive Long userId) {
+    public ResponseEntity<List<SubscriptionResource>> getMySubscriptions() {
+        var userId = authenticatedUserProvider.getUserId();
         var resources = subscriptionQueryService.getByOwnerUserId(new UserId(userId)).stream()
                 .map(SubscriptionResourceFromEntityAssembler::toResourceFromEntity)
                 .toList();
@@ -89,8 +89,8 @@ public class SubscriptionController {
     @GetMapping("/{subscriptionId}")
     @Operation(summary = "Get one subscription owned by the authenticated user")
     public ResponseEntity<SubscriptionResource> getSubscription(
-            @Parameter(hidden = true) @RequestHeader(USER_ID_HEADER) @Positive Long userId,
             @PathVariable @Positive Long subscriptionId) {
+        var userId = authenticatedUserProvider.getUserId();
         return subscriptionQueryService
                 .getBySubscriptionIdAndOwnerUserId(new SubscriptionId(subscriptionId), new UserId(userId))
                 .map(SubscriptionResourceFromEntityAssembler::toResourceFromEntity)
@@ -101,8 +101,8 @@ public class SubscriptionController {
     @PutMapping("/{subscriptionId}/activate")
     @Operation(summary = "Simulate payment approval and activate a pending subscription")
     public ResponseEntity<SubscriptionResource> activateSubscription(
-            @Parameter(hidden = true) @RequestHeader(USER_ID_HEADER) @Positive Long userId,
             @PathVariable @Positive Long subscriptionId) {
+        var userId = authenticatedUserProvider.getUserId();
         return updateStatus(
                 subscriptionCommandService.handle(new ActivateSubscriptionCommand(subscriptionId, userId)),
                 subscriptionId,
@@ -113,8 +113,8 @@ public class SubscriptionController {
     @PutMapping("/{subscriptionId}/cancel")
     @Operation(summary = "Cancel an active subscription")
     public ResponseEntity<SubscriptionResource> cancelSubscription(
-            @Parameter(hidden = true) @RequestHeader(USER_ID_HEADER) @Positive Long userId,
             @PathVariable @Positive Long subscriptionId) {
+        var userId = authenticatedUserProvider.getUserId();
         return updateStatus(
                 subscriptionCommandService.handle(new CancelSubscriptionCommand(subscriptionId, userId)),
                 subscriptionId,

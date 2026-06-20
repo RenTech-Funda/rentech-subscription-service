@@ -7,7 +7,6 @@ import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
-import org.springframework.web.bind.MissingRequestHeaderException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
@@ -16,13 +15,6 @@ import java.util.stream.Collectors;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
-
-    @ExceptionHandler(MissingRequestHeaderException.class)
-    public ResponseEntity<ProblemDetail> handleMissingHeader(
-            MissingRequestHeaderException exception, HttpServletRequest request) {
-        return problem(HttpStatus.UNAUTHORIZED, "Authentication context is missing",
-                "Required header " + exception.getHeaderName() + " was not provided", request);
-    }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ProblemDetail> handleInvalidBody(
