@@ -9,7 +9,7 @@
         <relativePath/> <!-- lookup parent from repository -->
     </parent>
     <groupId>com.agrotrack.suscription</groupId>
-    <artifactId>service</artifactId>
+    <artifactId>subscription-service</artifactId>
     <version>0.0.1-SNAPSHOT</version>
     <name>agrotrack-suscription-service</name>
     <description>agrotrack-suscription-service</description>
